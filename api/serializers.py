@@ -40,3 +40,13 @@ class JournalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Journal
         fields = ['id', 'date', 'title', 'mood', 'content']
+
+
+class DashboardSerializer(serializers.Serializer):
+    accounts = AccountSerializer(many=True)
+    categories = CategorySerializer(many=True)
+    transactions = TransactionSerializer(many=True)
+    todos = TodoSerializer(many=True)
+    tasks = TaskSerializer(many=True)
+    checklist_items = ChecklistItemSerializer(many=True)
+    journals = JournalSerializer(many=True)
