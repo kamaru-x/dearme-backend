@@ -6,6 +6,7 @@ from rest_framework import generics
 from rest_framework.views import APIView
 from .models import Account, Category, Transaction, Todo, Task, ChecklistItem, Journal
 from .serializers import AccountSerializer, CategorySerializer, TransactionSerializer, TodoSerializer, TaskSerializer, ChecklistItemSerializer, JournalSerializer, DashboardSerializer
+from django.db.models import Sum
 
 # Create your views here.
 
@@ -195,13 +196,21 @@ class TransactionList(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
+        transactions = self.get_queryset()
+
+        credited = transactions.filter(type='credit').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        debited = transactions.filter(type='debit').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        balance = float(credited) - float(debited)
+
+        serializer = self.get_serializer(transactions, many=True)
 
         return Response({
             'status': 'success',
             'message': 'Transactions retrieved successfully',
-            'data': serializer.data
+            'data': serializer.data,
+            'credited': credited,
+            'debited': debited,
+            'balance': balance
         }, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
