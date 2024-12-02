@@ -9,7 +9,7 @@ TYPES = (
 
 PRIORITY = (
     ('high', 'High'),
-    ('medium', 'Medium'),
+    ('normal', 'Normal'),
     ('low', 'Low'),
 )
 
@@ -44,14 +44,26 @@ class Transaction(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
 
+    class Meta:
+        ordering = ['-date', '-id']
+        indexes = [
+            models.Index(fields=['-date', '-id']),
+        ]
+
     def __str__(self):
         return f"{self.category.name} - {self.amount}"
 
 class Todo(models.Model):
     date = models.DateField(auto_now_add=True)
-    title = models.CharField(max_length=100)
-    priority = models.CharField(max_length=10, choices=PRIORITY)
+    title = models.CharField(max_length=100,null=True)
+    priority = models.CharField(max_length=10, choices=PRIORITY, default='normal')
     completed = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-date', '-id']
+        indexes = [
+            models.Index(fields=['-date', '-id']),
+        ]
 
     def __str__(self):
         return self.title
@@ -61,6 +73,12 @@ class Task(models.Model):
     title = models.CharField(max_length=100)
     order = models.IntegerField(default=0)
 
+    class Meta:
+        ordering = ['-date', '-id']
+        indexes = [
+            models.Index(fields=['-date', '-id']),
+        ]
+
     def __str__(self):
         return self.title
 
@@ -69,14 +87,26 @@ class ChecklistItem(models.Model):
     date = models.DateField()
     completed = models.BooleanField(default=True)
 
+    class Meta:
+        ordering = ['-date', '-id']
+        indexes = [
+            models.Index(fields=['-date', '-id']),
+        ]
+
     def __str__(self):
         return f"{self.task.title} - {self.date}"
 
 class Journal(models.Model):
-    date = models.DateField(auto_now_add=True)
+    date = models.DateField()
     title = models.CharField(max_length=100)
     mood = models.CharField(max_length=50,choices=MOOD)
     content = models.TextField()
+
+    class Meta:
+        ordering = ['-date', '-id']
+        indexes = [
+            models.Index(fields=['-date', '-id']),
+        ]
 
     def __str__(self):
         return self.title

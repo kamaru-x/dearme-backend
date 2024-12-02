@@ -10,7 +10,7 @@ urlpatterns = [
 
     # Dashboard endpoints
     # path('dashboard/', views.Dashboard.as_view(), name='dashboard'),
-    
+
     # Account endpoints
     path('accounts/', views.AccountList.as_view(), name='accounts'),
     path('accounts/<int:pk>/', views.AccountDeails.as_view(), name='account-detail'),
@@ -21,7 +21,7 @@ urlpatterns = [
 
     # transaction endpoints
     path('transactions/', views.TransactionList.as_view(), name='transactions'),
-    path('transactions/<int:pk>/', views.TransactionDetails.as_view(), name='transaction-detail'),
+    path('transaction/<int:pk>/', views.TransactionDetails.as_view(), name='transaction-detail'),
 
     # task endpoints
     path('tasks/', views.TaskList.as_view(), name='tasks'),
@@ -33,9 +33,9 @@ urlpatterns = [
 
     # checklist endpoints
     path('checklists/', views.CheckList.as_view(), name='checklists'),
-    path('checklists/<str:date>/', views.CheckListDetails.as_view(), name='checklist-detail'),
+    path('checklists/<int:pk>/', views.CheckListDetails.as_view(), name='checklist-detail'),
 
     # journal endpoints
     path('journals/', views.JournalList.as_view(), name='journals'),
-    path('journals/<str:date>/', views.JournalDetails.as_view(), name='journal-detail'),
+    path('journals/<int:pk>/', views.JournalDetails.as_view(), name='journal-detail'),
 ]
