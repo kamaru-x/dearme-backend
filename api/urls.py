@@ -32,8 +32,10 @@ urlpatterns = [
     path('todos/<int:pk>/', views.TodoDetails.as_view(), name='todo-detail'),
 
     # checklist endpoints
-    path('checklists/', views.CheckList.as_view(), name='checklists'),
-    path('checklists/<int:pk>/', views.CheckListDetails.as_view(), name='checklist-detail'),
+    path('checklist/', views.CheckList.as_view(), name='checklist'),
+    path('checklist/<int:pk>/', views.CheckListDetails.as_view(), name='checklist-detail'),
+    path('previous/', views.PreviousDays.as_view(), name='previous-days'),
+    path('previous/tasks/', views.PreviousDayTasks.as_view(), name='previous-tasks'),
 
     # journal endpoints
     path('journals/', views.JournalList.as_view(), name='journals'),

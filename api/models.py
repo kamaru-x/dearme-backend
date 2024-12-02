@@ -85,7 +85,7 @@ class Task(models.Model):
 class ChecklistItem(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
     date = models.DateField()
-    completed = models.BooleanField(default=True)
+    completed = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-date', '-id']

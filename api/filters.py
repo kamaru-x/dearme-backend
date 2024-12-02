@@ -5,8 +5,6 @@ class AccountFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_expr='icontains')
     bank = django_filters.CharFilter(lookup_expr='icontains')
     date = django_filters.DateFilter()
-    from_date = django_filters.DateFilter(field_name='date', lookup_expr='gte')
-    to_date = django_filters.DateFilter(field_name='date', lookup_expr='lte')
 
     class Meta:
         model = Account
@@ -16,8 +14,6 @@ class CategoryFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_expr='icontains')
     type = django_filters.ChoiceFilter(choices=[('credit', 'Credit'), ('debit', 'Debit')])
     date = django_filters.DateFilter()
-    from_date = django_filters.DateFilter(field_name='date', lookup_expr='gte')
-    to_date = django_filters.DateFilter(field_name='date', lookup_expr='lte')
 
     class Meta:
         model = Category
@@ -44,8 +40,6 @@ class TodoFilter(django_filters.FilterSet):
     priority = django_filters.ChoiceFilter(choices=[('high', 'High'), ('medium', 'Medium'), ('low', 'Low')])
     completed = django_filters.BooleanFilter()
     date = django_filters.DateFilter()
-    from_date = django_filters.DateFilter(field_name='date', lookup_expr='gte')
-    to_date = django_filters.DateFilter(field_name='date', lookup_expr='lte')
 
     class Meta:
         model = Todo
@@ -54,8 +48,6 @@ class TodoFilter(django_filters.FilterSet):
 class TaskFilter(django_filters.FilterSet):
     title = django_filters.CharFilter(lookup_expr='icontains')
     date = django_filters.DateFilter()
-    from_date = django_filters.DateFilter(field_name='date', lookup_expr='gte')
-    to_date = django_filters.DateFilter(field_name='date', lookup_expr='lte')
     order = django_filters.NumberFilter()
 
     class Meta:
@@ -66,8 +58,6 @@ class ChecklistItemFilter(django_filters.FilterSet):
     task = django_filters.ModelChoiceFilter(queryset=Task.objects.all())
     completed = django_filters.BooleanFilter()
     date = django_filters.DateFilter()
-    from_date = django_filters.DateFilter(field_name='date', lookup_expr='gte')
-    to_date = django_filters.DateFilter(field_name='date', lookup_expr='lte')
 
     class Meta:
         model = ChecklistItem
@@ -78,8 +68,6 @@ class JournalFilter(django_filters.FilterSet):
     mood = django_filters.ChoiceFilter(choices=[('happy', 'Happy'), ('neutral', 'Neutral'), ('sad', 'Sad')])
     content = django_filters.CharFilter(lookup_expr='icontains')
     date = django_filters.DateFilter()
-    from_date = django_filters.DateFilter(field_name='date', lookup_expr='gte')
-    to_date = django_filters.DateFilter(field_name='date', lookup_expr='lte')
 
     class Meta:
         model = Journal

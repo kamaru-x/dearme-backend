@@ -9,6 +9,8 @@ from .models import Account, Category, Transaction, Todo, Task, ChecklistItem, J
 from .serializers import AccountSerializer, CategorySerializer, TransactionSerializer, TodoSerializer, TaskSerializer, ChecklistItemSerializer, JournalSerializer, DashboardSerializer
 from .filters import AccountFilter, CategoryFilter, TransactionFilter, TodoFilter, TaskFilter, ChecklistItemFilter, JournalFilter
 from django.db.models import Sum
+from datetime import datetime
+today = datetime.today()
 
 # Create your views here.
 
@@ -51,7 +53,6 @@ class AccountList(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        permission_classes = [IsAuthenticated]
 
         if serializer.is_valid():
             serializer.save()
@@ -133,7 +134,6 @@ class CategoryListCreate(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        permission_classes = [IsAuthenticated]
 
         if serializer.is_valid():
             serializer.save()
@@ -463,6 +463,20 @@ class CheckList(generics.ListCreateAPIView):
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
+        queryset = queryset.filter(date=today)
+
+        if not queryset.exists():
+            tasks = Task.objects.all()
+            checklist_objects = []
+
+            for task in tasks:
+                checklist_objects.append(ChecklistItem(task=task, date=today))
+
+            ChecklistItem.objects.bulk_create(checklist_objects)
+
+            queryset = self.filter_queryset(self.get_queryset())
+            queryset = queryset.filter(date=today)
+
         serializer = self.get_serializer(queryset, many=True)
 
         return Response({
@@ -473,7 +487,6 @@ class CheckList(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        permission_classes = [IsAuthenticated]
 
         if serializer.is_valid():
             serializer.save()
@@ -535,6 +548,29 @@ class CheckListDetails(generics.RetrieveUpdateDestroyAPIView):
             'message': 'Checklist deleted successfully'
         }, status=status.HTTP_200_OK)
 
+class PreviousDays(APIView):
+    def get(self, request, *args, **kwargs):
+        dates = sorted(set(ChecklistItem.objects.values_list('date', flat=True)), reverse=True)
+        data = []
+
+        for date in dates:
+            tasks = ChecklistItem.objects.filter(date=date)
+            completed = tasks.filter(completed=False).count() == 0
+
+            data.append({'date': date, 'completed': completed})
+
+        return Response({
+            'status': 'success',
+            'message': 'Dates retrieved successfully',
+            'data': data
+        }, status=status.HTTP_200_OK)
+
+class PreviousDayTasks(generics.ListAPIView):
+    queryset = ChecklistItem.objects.all()
+    serializer_class = ChecklistItemSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ChecklistItemFilter
+    ordering_fields = ['date']
 
 class JournalList(generics.ListCreateAPIView):
     queryset = Journal.objects.all()
@@ -555,7 +591,6 @@ class JournalList(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        permission_classes = [IsAuthenticated]
 
         if serializer.is_valid():
             serializer.save()
