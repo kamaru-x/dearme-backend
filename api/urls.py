@@ -20,6 +20,8 @@ urlpatterns = [
     path('categories/<int:pk>/', views.CategoryDetails.as_view(), name='category-detail'),
 
     # transaction endpoints
+    path('transactions/overview/', views.TransactionOverview.as_view(), name='transaction-overview'),
+    path('transactions/report/', views.TransactionReport.as_view(), name='transaction-report'),
     path('transactions/', views.TransactionList.as_view(), name='transactions'),
     path('transaction/<int:pk>/', views.TransactionDetails.as_view(), name='transaction-detail'),
 

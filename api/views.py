@@ -8,11 +8,15 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Account, Category, Transaction, Todo, Task, ChecklistItem, Journal
 from .serializers import AccountSerializer, CategorySerializer, TransactionSerializer, TodoSerializer, TaskSerializer, ChecklistItemSerializer, JournalSerializer, DashboardSerializer
 from .filters import AccountFilter, CategoryFilter, TransactionFilter, TodoFilter, TaskFilter, ChecklistItemFilter, JournalFilter
-from django.db.models import Sum
-from datetime import datetime
+from django.db.models import Sum, Count
+from datetime import datetime, date
+from collections import defaultdict
+from decimal import Decimal
 today = datetime.today()
 
 # Create your views here.
+
+################################################## TEST TOKEN ##################################################
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -20,6 +24,8 @@ def test_token(request):
     return Response({
         'message': 'Token is valid'
     }, status=status.HTTP_200_OK)
+
+################################################## DASHBOARD ##################################################
 
 class Dashboard(APIView):
     serializer_class = DashboardSerializer
@@ -33,6 +39,8 @@ class Dashboard(APIView):
             'message': 'Dashboard retrieved successfully',
             'data': serializer.data
         }, status=status.HTTP_200_OK)
+    
+################################################## ACCOUNTS LIST & CREATE ##################################################
 
 class AccountList(generics.ListCreateAPIView):
     queryset = Account.objects.all()
@@ -68,6 +76,7 @@ class AccountList(generics.ListCreateAPIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
+################################################## ACCOUNTS UPDATE & DELETE ##################################################
 
 class AccountDeails(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AccountSerializer
@@ -114,6 +123,7 @@ class AccountDeails(generics.RetrieveUpdateDestroyAPIView):
             'message': 'Account deleted successfully'
         }, status=status.HTTP_200_OK)
 
+################################################## CATEGORIES LIST & CREATE ##################################################
 
 class CategoryListCreate(generics.ListCreateAPIView):
     queryset = Category.objects.all()
@@ -149,6 +159,8 @@ class CategoryListCreate(generics.ListCreateAPIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
+
+################################################## CATEGORY UPDATE & DELETE ##################################################
 
 class CategoryDetails(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CategorySerializer
@@ -194,7 +206,81 @@ class CategoryDetails(generics.RetrieveUpdateDestroyAPIView):
             'status': 'success',
             'message': 'Category deleted successfully'
         }, status=status.HTTP_200_OK)
+    
+################################################## TRANSACTION OVERVIEW ##################################################
 
+class TransactionOverview(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        categories = Category.objects.all()
+        totals = []
+
+        for category in categories:
+            transactions = Transaction.objects.filter(category=category)
+            amount = (transactions.aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0)
+
+            total = {
+                'category': category.name,
+                'type' : category.type,
+                'transactions': f'{transactions.count()} Transactions',
+                'amount': amount,
+            }
+
+            totals.append(total)
+
+        return Response({
+            'status': 'success',
+            'message': 'Transaction overview retrieved successfully',
+            'data': totals,
+        }, status=status.HTTP_200_OK)
+    
+################################################## TRANSACTION REPORT ##################################################
+
+class TransactionReport(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # Fetch all transactions
+        transactions = Transaction.objects.all()
+
+        # Initialize a dictionary to hold credit, debit, and balance for each (year, month)
+        monthly_data = defaultdict(lambda: {'credit': Decimal('0.0'), 'debit': Decimal('0.0'), 'balance': Decimal('0.0')})
+
+        for transaction in transactions:
+            year = transaction.date.year
+            month = transaction.date.month
+            key = (year, month)
+
+            # Ensure that amounts are converted to Decimal for consistent type handling
+            amount = Decimal(transaction.amount)
+
+            if transaction.category.type == 'credit':
+                monthly_data[key]['credit'] += amount
+            elif transaction.category.type == 'debit':
+                monthly_data[key]['debit'] += amount
+            
+            # Calculate balance as credit - debit
+            monthly_data[key]['balance'] = monthly_data[key]['credit'] - monthly_data[key]['debit']
+
+        # Prepare the response data and sort by year and month in descending order (recent first)
+        report = []
+        for (year, month), data in sorted(monthly_data.items(), reverse=True):
+            report.append({
+                'year': year,
+                'month': date(year, month, 1).strftime('%B'),  # Convert month number to name
+                'credit': float(data['credit']),  # Convert Decimal to float for the response
+                'debit': float(data['debit']),
+                'balance': float(data['balance']),
+            })
+
+        return Response({
+            'status': 'success',
+            'message': 'Monthly transaction report generated successfully',
+            'data': report,
+        }, status=status.HTTP_200_OK)
+
+################################################## TRANSACTIONS LIST & CREATE ##################################################
 
 class TransactionList(generics.ListCreateAPIView):
     queryset = Transaction.objects.all()
@@ -238,6 +324,8 @@ class TransactionList(generics.ListCreateAPIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
+
+################################################## TRANSACTIONS UPDATE & DELETE ##################################################
 
 class TransactionDetails(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TransactionSerializer
@@ -284,6 +372,7 @@ class TransactionDetails(generics.RetrieveUpdateDestroyAPIView):
             'message': 'Transaction deleted successfully'
         }, status=status.HTTP_200_OK)
 
+################################################## TASK LIST & CREATE ##################################################
 
 class TaskList(generics.ListCreateAPIView):
     queryset = Task.objects.all()
@@ -319,6 +408,7 @@ class TaskList(generics.ListCreateAPIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
+################################################## TASK UPDATE & DELETE ##################################################
 
 class TaskDetails(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TaskSerializer
@@ -365,6 +455,7 @@ class TaskDetails(generics.RetrieveUpdateDestroyAPIView):
             'message': 'Task deleted successfully'
         }, status=status.HTTP_200_OK)
 
+################################################## TODO LIST & CREATE ##################################################
 
 class TodoList(generics.ListCreateAPIView):
     queryset = Todo.objects.all()
@@ -408,6 +499,7 @@ class TodoList(generics.ListCreateAPIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
+################################################## TODO UPDATE & DELETE ##################################################
 
 class TodoDetails(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TodoSerializer
@@ -453,6 +545,8 @@ class TodoDetails(generics.RetrieveUpdateDestroyAPIView):
             'status': 'success',
             'message': 'Todo deleted successfully'
         }, status=status.HTTP_200_OK)
+
+################################################## CHECKLIST ##################################################
 
 class CheckList(generics.ListCreateAPIView):
     queryset = ChecklistItem.objects.all()
@@ -502,6 +596,7 @@ class CheckList(generics.ListCreateAPIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
+################################################## CHECKLIST DETAILS ##################################################
 
 class CheckListDetails(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ChecklistItemSerializer
@@ -547,6 +642,8 @@ class CheckListDetails(generics.RetrieveUpdateDestroyAPIView):
             'status': 'success',
             'message': 'Checklist deleted successfully'
         }, status=status.HTTP_200_OK)
+    
+################################################## PREVIOUS DAYS ##################################################
 
 class PreviousDays(APIView):
     def get(self, request, *args, **kwargs):
@@ -565,12 +662,16 @@ class PreviousDays(APIView):
             'data': data
         }, status=status.HTTP_200_OK)
 
+################################################## PREVIOUS DAY TASKS ##################################################
+
 class PreviousDayTasks(generics.ListAPIView):
     queryset = ChecklistItem.objects.all()
     serializer_class = ChecklistItemSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = ChecklistItemFilter
     ordering_fields = ['date']
+
+################################################## JOURNAL LIST & CREATE ##################################################
 
 class JournalList(generics.ListCreateAPIView):
     queryset = Journal.objects.all()
@@ -606,6 +707,7 @@ class JournalList(generics.ListCreateAPIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
+################################################## JOURNAL UPDATE & DELETE ##################################################
 
 class JournalDetails(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = JournalSerializer
