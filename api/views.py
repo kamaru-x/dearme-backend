@@ -223,7 +223,7 @@ class TransactionOverview(APIView):
             total = {
                 'category': category.name,
                 'type' : category.type,
-                'transactions': f'{transactions.count()} Transactions',
+                'transactions': f'{transactions.count()} transactions',
                 'amount': amount,
             }
 
