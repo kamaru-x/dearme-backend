@@ -12,7 +12,7 @@ class AccountFilter(django_filters.FilterSet):
 
 class CategoryFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_expr='icontains')
-    type = django_filters.ChoiceFilter(choices=[('credit', 'Credit'), ('debit', 'Debit')])
+    type = django_filters.ChoiceFilter(choices=[('credit', 'Credit'), ('debit', 'Debit'), ('credit_transfer', 'Credit Transfer'), ('debit_transfer', 'Debit Transfer'),])
     date = django_filters.DateFilter()
 
     class Meta:

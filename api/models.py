@@ -5,6 +5,8 @@ from django.db import models
 TYPES = (
     ('credit', 'Credit'),
     ('debit', 'Debit'),
+    ('credit_transfer', 'Credit Transfer'),
+    ('debit_transfer', 'Debit Transfer'),
 )
 
 PRIORITY = (
@@ -19,18 +21,26 @@ MOOD = (
     ('sad', 'Sad'),
 )
 
+ACCOUNT_TYPE = (
+    ('savings', 'Savings'),
+    ('slary_account', 'Slary Account'),
+    ('primary_account', 'Primary Account'),
+    ('secondary_account', 'Secondary Account')
+)
+
 class Account(models.Model):
     date = models.DateField(auto_now_add=True)
+    type = models.CharField(max_length=50, choices=ACCOUNT_TYPE)
     name = models.CharField(max_length=100)
     bank = models.CharField(max_length=100)
-    number = models.CharField(max_length=100)
+    number = models.CharField(max_length=100, default='XXXXXXXXXXXX')
 
     def __str__(self):
         return self.name
 
 class Category(models.Model):
     date = models.DateField(auto_now_add=True)
-    type = models.CharField(max_length=10, choices=TYPES)
+    type = models.CharField(max_length=25, choices=TYPES)
     name = models.CharField(max_length=100)
 
     def __str__(self):
@@ -39,7 +49,7 @@ class Category(models.Model):
 class Transaction(models.Model):
     date = models.DateField()
     title = models.CharField(max_length=100)
-    type = models.CharField(max_length=10, choices=TYPES)
+    type = models.CharField(max_length=25, choices=TYPES)
     account = models.ForeignKey(Account, on_delete=models.CASCADE)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)

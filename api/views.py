@@ -279,6 +279,43 @@ class TransactionReport(APIView):
             'message': 'Monthly transaction report generated successfully',
             'data': report,
         }, status=status.HTTP_200_OK)
+    
+################################################## ACCOUNT OVERVIEW ##################################################
+
+class AccountsOverview(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        bank_accounts = Account.objects.all()
+        accounts = []
+
+        for bank_account in bank_accounts:
+            credited = Transaction.objects.filter(account=bank_account, type='credit').aggregate(Sum('amount'))['amount__sum'] or 0
+            debited = Transaction.objects.filter(account=bank_account, type='debit').aggregate(Sum('amount'))['amount__sum'] or 0
+            credit_transfer = Transaction.objects.filter(account=bank_account, type='credit_transfer').aggregate(Sum('amount'))['amount__sum'] or 0
+            debit_transfer = Transaction.objects.filter(account=bank_account, type='debit_transfer').aggregate(Sum('amount'))['amount__sum'] or 0
+
+            balance = (credited - debited + credit_transfer) - debit_transfer
+
+            account = {
+                'name': bank_account.name,
+                'bank': bank_account.bank,
+
+                'credited': credited,
+                'debited': debited,
+                'credit_transfer': credit_transfer,
+                'debit_transfer' : debit_transfer,
+
+                'balance': balance,
+            }
+
+            accounts.append(account)
+
+        return Response({
+            'status': 'success',
+            'message': 'Account overview retrieved successfully',
+            'data': accounts,
+        }, status=status.HTTP_200_OK)
 
 ################################################## TRANSACTIONS LIST & CREATE ##################################################
 
@@ -294,7 +331,9 @@ class TransactionList(generics.ListCreateAPIView):
 
         credited = transactions.filter(type='credit').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
         debited = transactions.filter(type='debit').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
-        balance = float(credited) - float(debited)
+        debit_transfer = transactions.filter(type='debit_transfer').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        balance = float(credited) - float(debited) - float(debit_transfer)
+        savings = transactions.filter(account__type='savings', type='credit_transfer').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
 
         serializer = self.get_serializer(transactions, many=True)
 
@@ -304,7 +343,8 @@ class TransactionList(generics.ListCreateAPIView):
             'data': serializer.data,
             'credited': credited,
             'debited': debited,
-            'balance': balance
+            'balance': balance,
+            'savings': savings
         }, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
