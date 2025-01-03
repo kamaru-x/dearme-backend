@@ -25,7 +25,8 @@ ACCOUNT_TYPE = (
     ('savings', 'Savings'),
     ('slary_account', 'Slary Account'),
     ('primary_account', 'Primary Account'),
-    ('secondary_account', 'Secondary Account')
+    ('secondary_account', 'Secondary Account'),
+    ('inhand', 'In Hand')
 )
 
 class Account(models.Model):
