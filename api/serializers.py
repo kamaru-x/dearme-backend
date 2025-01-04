@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Account, Category, Transaction, Todo, Task, ChecklistItem, Journal
+from .models import Account, Category, Transaction, SelfTransfer, Todo, Task, ChecklistItem, Journal
 
 class AccountSerializer(serializers.ModelSerializer):
     type_value = serializers.SerializerMethodField()
@@ -32,6 +32,15 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     def get_type_value(self, obj):
         return obj.get_type_display()
+
+
+class SelfTransferSerializer(serializers.ModelSerializer):
+    from_account_name = serializers.CharField(source='from_account.name', read_only=True)
+    to_account_name = serializers.CharField(source='to_account.name', read_only=True)
+
+    class Meta:
+        model = SelfTransfer
+        fields = ['id', 'date', 'from_account', 'from_account_name', 'to_account', 'to_account_name', 'amount',]
 
 class TodoSerializer(serializers.ModelSerializer):
     class Meta:

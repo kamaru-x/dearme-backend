@@ -4,9 +4,7 @@ from django.db import models
 
 TYPES = (
     ('credit', 'Credit'),
-    ('debit', 'Debit'),
-    ('credit_transfer', 'Credit Transfer'),
-    ('debit_transfer', 'Debit Transfer'),
+    ('debit', 'Debit')
 )
 
 PRIORITY = (
@@ -22,11 +20,9 @@ MOOD = (
 )
 
 ACCOUNT_TYPE = (
-    ('savings', 'Savings'),
-    ('slary_account', 'Slary Account'),
     ('primary_account', 'Primary Account'),
     ('secondary_account', 'Secondary Account'),
-    ('inhand', 'In Hand')
+    ('savings_account', 'Savings Account'),
 )
 
 class Account(models.Model):
@@ -53,7 +49,7 @@ class Transaction(models.Model):
     type = models.CharField(max_length=25, choices=TYPES)
     account = models.ForeignKey(Account, on_delete=models.CASCADE)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.FloatField()
 
     class Meta:
         ordering = ['-date', '-id']
@@ -63,6 +59,23 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.category.name} - {self.amount}"
+
+
+class SelfTransfer(models.Model):
+    date = models.DateField(auto_now_add=True)
+    from_account = models.ForeignKey(Account, related_name='from_account', on_delete=models.CASCADE)
+    to_account = models.ForeignKey(Account, related_name='to_account', on_delete=models.CASCADE)
+    amount = models.FloatField()
+
+    def __str__(self):
+        return f"{self.from_account.name} -> {self.to_account.name} - {self.amount}"
+
+    class Meta:
+        ordering = ['-date', '-id']
+        indexes = [
+            models.Index(fields=['-date', '-id']),
+        ]
+
 
 class Todo(models.Model):
     date = models.DateField(auto_now_add=True)

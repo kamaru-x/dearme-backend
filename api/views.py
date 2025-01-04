@@ -5,8 +5,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import generics
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Account, Category, Transaction, Todo, Task, ChecklistItem, Journal
-from .serializers import AccountSerializer, CategorySerializer, TransactionSerializer, TodoSerializer, TaskSerializer, ChecklistItemSerializer, JournalSerializer, DashboardSerializer
+from .models import Account, Category, Transaction, SelfTransfer, Todo, Task, ChecklistItem, Journal
+from .serializers import AccountSerializer, CategorySerializer, TransactionSerializer, SelfTransferSerializer, TodoSerializer, TaskSerializer, ChecklistItemSerializer, JournalSerializer, DashboardSerializer
 from .filters import AccountFilter, CategoryFilter, TransactionFilter, TodoFilter, TaskFilter, ChecklistItemFilter, JournalFilter
 from django.db.models import Sum, Count
 from datetime import datetime, date
@@ -39,7 +39,7 @@ class Dashboard(APIView):
             'message': 'Dashboard retrieved successfully',
             'data': serializer.data
         }, status=status.HTTP_200_OK)
-    
+
 ################################################## ACCOUNTS LIST & CREATE ##################################################
 
 class AccountList(generics.ListCreateAPIView):
@@ -206,7 +206,7 @@ class CategoryDetails(generics.RetrieveUpdateDestroyAPIView):
             'status': 'success',
             'message': 'Category deleted successfully'
         }, status=status.HTTP_200_OK)
-    
+
 ################################################## TRANSACTION OVERVIEW ##################################################
 
 class TransactionOverview(APIView):
@@ -222,7 +222,7 @@ class TransactionOverview(APIView):
 
             total = {
                 'category': category.name,
-                'type' : category.type,
+                'type' : category.type.capitalize(),
                 'transactions': f'{transactions.count()} transactions',
                 'amount': amount,
             }
@@ -234,7 +234,7 @@ class TransactionOverview(APIView):
             'message': 'Transaction overview retrieved successfully',
             'data': totals,
         }, status=status.HTTP_200_OK)
-    
+
 ################################################## TRANSACTION REPORT ##################################################
 
 class TransactionReport(APIView):
@@ -242,10 +242,10 @@ class TransactionReport(APIView):
 
     def get(self, request, *args, **kwargs):
         # Fetch all transactions
-        transactions = Transaction.objects.all()
+        transactions = Transaction.objects.exclude(account__type='savings_account')
 
         # Initialize a dictionary to hold credit, debit, and balance for each (year, month)
-        monthly_data = defaultdict(lambda: {'credit': Decimal('0.0'), 'debit': Decimal('0.0'), 'balance': Decimal('0.0')})
+        monthly_data = defaultdict(lambda: {'credit': float('0.0'), 'debit': float('0.0'), 'balance': float('0.0')})
 
         for transaction in transactions:
             year = transaction.date.year
@@ -253,13 +253,13 @@ class TransactionReport(APIView):
             key = (year, month)
 
             # Ensure that amounts are converted to Decimal for consistent type handling
-            amount = Decimal(transaction.amount)
+            amount = float(transaction.amount)
 
             if transaction.category.type == 'credit':
                 monthly_data[key]['credit'] += amount
             elif transaction.category.type == 'debit':
                 monthly_data[key]['debit'] += amount
-            
+
             # Calculate balance as credit - debit
             monthly_data[key]['balance'] = monthly_data[key]['credit'] - monthly_data[key]['debit']
 
@@ -279,7 +279,7 @@ class TransactionReport(APIView):
             'message': 'Monthly transaction report generated successfully',
             'data': report,
         }, status=status.HTTP_200_OK)
-    
+
 ################################################## ACCOUNT OVERVIEW ##################################################
 
 class AccountsOverview(APIView):
@@ -292,8 +292,8 @@ class AccountsOverview(APIView):
         for bank_account in bank_accounts:
             credited = Transaction.objects.filter(account=bank_account, type='credit').aggregate(Sum('amount'))['amount__sum'] or 0
             debited = Transaction.objects.filter(account=bank_account, type='debit').aggregate(Sum('amount'))['amount__sum'] or 0
-            credit_transfer = Transaction.objects.filter(account=bank_account, type='credit_transfer').aggregate(Sum('amount'))['amount__sum'] or 0
-            debit_transfer = Transaction.objects.filter(account=bank_account, type='debit_transfer').aggregate(Sum('amount'))['amount__sum'] or 0
+            credit_transfer = SelfTransfer.objects.filter(to_account=bank_account).aggregate(Sum('amount'))['amount__sum'] or 0
+            debit_transfer = SelfTransfer.objects.filter(from_account=bank_account).aggregate(Sum('amount'))['amount__sum'] or 0
 
             balance = (credited - debited + credit_transfer) - debit_transfer
 
@@ -329,11 +329,15 @@ class TransactionList(generics.ListCreateAPIView):
     def list(self, request, *args, **kwargs):
         transactions = self.filter_queryset(self.get_queryset())
 
-        credited = transactions.filter(type='credit').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
-        debited = transactions.filter(type='debit').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
-        debit_transfer = transactions.filter(type='debit_transfer').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
-        balance = float(credited) - float(debited) - float(debit_transfer)
-        savings = transactions.filter(account__type='savings', type='credit_transfer').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        credited = transactions.filter(type='credit').exclude(account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        debited = transactions.filter(type='debit').exclude(account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        self_transfered = SelfTransfer.objects.filter(to_account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        balance = (credited - debited) - self_transfered
+
+        credited_to_savings = transactions.filter(account__type='savings_account', type='credit').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        debited_from_savings = transactions.filter(account__type='savings_account', type='debit').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+
+        savings = (self_transfered + credited_to_savings) - debited_from_savings
 
         serializer = self.get_serializer(transactions, many=True)
 
@@ -410,6 +414,88 @@ class TransactionDetails(generics.RetrieveUpdateDestroyAPIView):
         return Response({
             'status': 'success',
             'message': 'Transaction deleted successfully'
+        }, status=status.HTTP_200_OK)
+
+################################################## SELF TRANSFER LIST & CREATE ##################################################
+
+class SelfTransferList(generics.ListCreateAPIView):
+    queryset = SelfTransfer.objects.all()
+    serializer_class = SelfTransferSerializer
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        transfers = self.filter_queryset(self.get_queryset())
+
+        serializer = self.get_serializer(transfers, many=True)
+
+        return Response({
+            'status': 'success',
+            'message': 'Self Transfers retrieved successfully',
+            'data': serializer.data,
+        }, status=status.HTTP_200_OK)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'status': 'success',
+                'message': 'Self transfer created successfully',
+                'data': serializer.data
+            }, status=status.HTTP_201_CREATED)
+
+        return Response({
+            'status': 'error',
+            'message': 'Failed to create self transfer',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+################################################## SELF TRANSFER UPDATE & DELETE ##################################################
+
+class SelfTransferDetails(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = SelfTransferSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return SelfTransfer.objects.all()
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+
+        return Response({
+            'status': 'success',
+            'message': 'Self transfer retrieved successfully',
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+
+            return Response({
+                'status': 'success',
+                'message': 'Self transfer updated successfully',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            'status': 'error',
+            'message': 'Failed to update transaction',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+
+        return Response({
+            'status': 'success',
+            'message': 'Self transfer deleted successfully'
         }, status=status.HTTP_200_OK)
 
 ################################################## TASK LIST & CREATE ##################################################
@@ -682,7 +768,7 @@ class CheckListDetails(generics.RetrieveUpdateDestroyAPIView):
             'status': 'success',
             'message': 'Checklist deleted successfully'
         }, status=status.HTTP_200_OK)
-    
+
 ################################################## PREVIOUS DAYS ##################################################
 
 class PreviousDays(APIView):

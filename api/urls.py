@@ -26,6 +26,10 @@ urlpatterns = [
     path('transactions/', views.TransactionList.as_view(), name='transactions'),
     path('transaction/<int:pk>/', views.TransactionDetails.as_view(), name='transaction-detail'),
 
+    # Transfer endpoints
+    path('transfers/', views.SelfTransferList.as_view(), name='transfers'),
+    path('transfer/<int:pk>/', views.SelfTransferDetails.as_view(), name='transfer-detail'),
+
     # task endpoints
     path('tasks/', views.TaskList.as_view(), name='tasks'),
     path('tasks/<int:pk>/', views.TaskDetails.as_view(), name='task-detail'),
