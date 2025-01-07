@@ -331,13 +331,14 @@ class TransactionList(generics.ListCreateAPIView):
 
         credited = transactions.filter(type='credit').exclude(account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
         debited = transactions.filter(type='debit').exclude(account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
-        self_transfered = SelfTransfer.objects.filter(to_account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
-        balance = (credited - debited) - self_transfered
+        to_account = SelfTransfer.objects.filter(to_account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        from_account = SelfTransfer.objects.filter(from_account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        balance = (credited - debited) - to_account
 
         credited_to_savings = transactions.filter(account__type='savings_account', type='credit').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
         debited_from_savings = transactions.filter(account__type='savings_account', type='debit').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
 
-        savings = (self_transfered + credited_to_savings) - debited_from_savings
+        savings = ((to_account + credited_to_savings) - debited_from_savings) - from_account
 
         serializer = self.get_serializer(transactions, many=True)
 
