@@ -9,7 +9,7 @@ urlpatterns = [
     path('test/', views.test_token, name='test'),
 
     # Dashboard endpoints
-    # path('dashboard/', views.Dashboard.as_view(), name='dashboard'),
+    path('dashboard/', views.Dashboard.as_view(), name='dashboard'),
 
     # Account endpoints
     path('accounts/', views.AccountList.as_view(), name='accounts'),
@@ -33,6 +33,7 @@ urlpatterns = [
     # task endpoints
     path('tasks/', views.TaskList.as_view(), name='tasks'),
     path('tasks/<int:pk>/', views.TaskDetails.as_view(), name='task-detail'),
+    path('tasks/update-order/', views.TaskOrderUpdate.as_view(), name='update-task-order'),
 
     # todo endpoints
     path('todos/', views.TodoList.as_view(), name='todos'),

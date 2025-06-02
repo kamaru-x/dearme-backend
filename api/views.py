@@ -587,6 +587,28 @@ class TaskDetails(generics.RetrieveUpdateDestroyAPIView):
             'message': 'Task deleted successfully'
         }, status=status.HTTP_200_OK)
 
+class TaskOrderUpdate(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    
+    def update(self, request, *args, **kwargs):
+        try:
+            task_orders = request.data.get('task_orders', [])
+            
+            for order_data in task_orders:
+                task = Task.objects.get(id=order_data['id'])
+                task.order = order_data['order']
+                task.save()
+                
+            return Response({
+                'status': 'success',
+                'message': 'Task order updated successfully'
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
 ################################################## TODO LIST & CREATE ##################################################
 
 class TodoList(generics.ListCreateAPIView):
@@ -692,7 +714,7 @@ class CheckList(generics.ListCreateAPIView):
         queryset = queryset.filter(date=today)
 
         if not queryset.exists():
-            tasks = Task.objects.all()
+            tasks = Task.objects.all().order_by('order')
             checklist_objects = []
 
             for task in tasks:

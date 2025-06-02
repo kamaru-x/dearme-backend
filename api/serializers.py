@@ -50,7 +50,7 @@ class TodoSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ['id', 'date', 'title']
+        fields = ['id', 'date', 'title', 'order']
 
 class ChecklistItemSerializer(serializers.ModelSerializer):
     task_title = serializers.CharField(source='task.title', read_only=True)

@@ -98,9 +98,9 @@ class Task(models.Model):
     order = models.IntegerField(default=0)
 
     class Meta:
-        ordering = ['-date', '-id']
+        ordering = ['order', '-date', '-id']
         indexes = [
-            models.Index(fields=['-date', '-id']),
+            models.Index(fields=['order', '-date', '-id']),
         ]
 
     def __str__(self):
