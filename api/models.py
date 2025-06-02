@@ -41,9 +41,9 @@ class Category(models.Model):
     name = models.CharField(max_length=100)
 
     class Meta:
-        ordering = ['type', '-date', '-id']
+        ordering = ['type', 'date', 'id']
         indexes = [
-            models.Index(fields=['type', '-date', '-id']),
+            models.Index(fields=['type', 'date', 'id']),
         ]
 
     def __str__(self):
