@@ -527,7 +527,8 @@ class TaskList(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
-            serializer.save()
+            order_id = Task.objects.last().order + 1 if Task.objects.exists() else 1
+            serializer.save(order=order_id)
             return Response({
                 'status': 'success',
                 'message': 'Task created successfully',
@@ -586,6 +587,8 @@ class TaskDetails(generics.RetrieveUpdateDestroyAPIView):
             'status': 'success',
             'message': 'Task deleted successfully'
         }, status=status.HTTP_200_OK)
+
+################################################## TASK ORDER UPDATE ##################################################
 
 class TaskOrderUpdate(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
