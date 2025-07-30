@@ -43,11 +43,13 @@ class Dashboard(APIView):
 ################################################## ACCOUNTS LIST & CREATE ##################################################
 
 class AccountList(generics.ListCreateAPIView):
-    queryset = Account.objects.all()
     serializer_class = AccountSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = AccountFilter
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Account.objects.filter(user=self.request.user)
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -63,7 +65,7 @@ class AccountList(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user=request.user)
             return Response({
                 'status': 'success',
                 'message': 'Account created successfully',
@@ -83,7 +85,7 @@ class AccountDeails(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Account.objects.all()
+        return Account.objects.filter(user=self.request.user)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -126,11 +128,13 @@ class AccountDeails(generics.RetrieveUpdateDestroyAPIView):
 ################################################## CATEGORIES LIST & CREATE ##################################################
 
 class CategoryListCreate(generics.ListCreateAPIView):
-    queryset = Category.objects.all()
     serializer_class = CategorySerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = CategoryFilter
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Category.objects.filter(user=self.request.user)
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -146,7 +150,7 @@ class CategoryListCreate(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user=request.user)
             return Response({
                 'status': 'success',
                 'message': 'Category created successfully',
@@ -167,7 +171,7 @@ class CategoryDetails(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Category.objects.all()
+        return Category.objects.filter(user=self.request.user)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -213,11 +217,11 @@ class TransactionOverview(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        categories = Category.objects.all()
+        categories = Category.objects.filter(user=request.user)
         totals = []
 
         for category in categories:
-            transactions = Transaction.objects.filter(category=category)
+            transactions = Transaction.objects.filter(category=category, user=request.user)
             amount = (transactions.aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0)
 
             total = {
@@ -242,7 +246,7 @@ class TransactionReport(APIView):
 
     def get(self, request, *args, **kwargs):
         # Fetch all transactions
-        transactions = Transaction.objects.exclude(account__type='savings_account')
+        transactions = Transaction.objects.filter(user=request.user).exclude(account__type='savings_account')
 
         # Initialize a dictionary to hold credit, debit, and balance for each (year, month)
         monthly_data = defaultdict(lambda: {'credit': float('0.0'), 'debit': float('0.0'), 'balance': float('0.0')})
@@ -286,14 +290,14 @@ class AccountsOverview(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        bank_accounts = Account.objects.all()
+        bank_accounts = Account.objects.filter(user=request.user)
         accounts = []
 
         for bank_account in bank_accounts:
-            credited = Transaction.objects.filter(account=bank_account, type='credit').aggregate(Sum('amount'))['amount__sum'] or 0
-            debited = Transaction.objects.filter(account=bank_account, type='debit').aggregate(Sum('amount'))['amount__sum'] or 0
-            credit_transfer = SelfTransfer.objects.filter(to_account=bank_account).aggregate(Sum('amount'))['amount__sum'] or 0
-            debit_transfer = SelfTransfer.objects.filter(from_account=bank_account).aggregate(Sum('amount'))['amount__sum'] or 0
+            credited = Transaction.objects.filter(user=request.user,account=bank_account, type='credit').aggregate(Sum('amount'))['amount__sum'] or 0
+            debited = Transaction.objects.filter(user=request.user,account=bank_account, type='debit').aggregate(Sum('amount'))['amount__sum'] or 0
+            credit_transfer = SelfTransfer.objects.filter(user=request.user,to_account=bank_account).aggregate(Sum('amount'))['amount__sum'] or 0
+            debit_transfer = SelfTransfer.objects.filter(user=request.user,from_account=bank_account).aggregate(Sum('amount'))['amount__sum'] or 0
 
             balance = (credited - debited + credit_transfer) - debit_transfer
 
@@ -320,11 +324,13 @@ class AccountsOverview(APIView):
 ################################################## TRANSACTIONS LIST & CREATE ##################################################
 
 class TransactionList(generics.ListCreateAPIView):
-    queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = TransactionFilter
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Transaction.objects.filter(user=self.request.user)
 
     def list(self, request, *args, **kwargs):
         transactions = self.filter_queryset(self.get_queryset())
@@ -332,11 +338,11 @@ class TransactionList(generics.ListCreateAPIView):
         credited = transactions.filter(type='credit').exclude(account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
         debited = transactions.filter(type='debit').exclude(account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
 
-        to_savings_account = SelfTransfer.objects.filter(to_account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
-        from_savings_account = SelfTransfer.objects.filter(from_account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        to_savings_account = SelfTransfer.objects.filter(user=request.user,to_account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        from_savings_account = SelfTransfer.objects.filter(user=request.user,from_account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
 
-        to_other_accounts = SelfTransfer.objects.exclude(to_account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
-        from_other_accounts = SelfTransfer.objects.exclude(from_account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        to_other_accounts = SelfTransfer.objects.filter(user=request.user).exclude(to_account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
+        from_other_accounts = SelfTransfer.objects.filter(user=request.user).exclude(from_account__type='savings_account').aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
 
         balance = ((credited - debited) - to_savings_account) + from_savings_account
 
@@ -361,7 +367,7 @@ class TransactionList(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user=request.user)
             return Response({
                 'status': 'success',
                 'message': 'Transaction created successfully',
@@ -382,7 +388,7 @@ class TransactionDetails(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Transaction.objects.all()
+        return Transaction.objects.filter(user=self.request.user)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -425,9 +431,11 @@ class TransactionDetails(generics.RetrieveUpdateDestroyAPIView):
 ################################################## SELF TRANSFER LIST & CREATE ##################################################
 
 class SelfTransferList(generics.ListCreateAPIView):
-    queryset = SelfTransfer.objects.all()
     serializer_class = SelfTransferSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return SelfTransfer.objects.filter(user=self.request.user)
 
     def list(self, request, *args, **kwargs):
         transfers = self.filter_queryset(self.get_queryset())
@@ -444,7 +452,7 @@ class SelfTransferList(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user=request.user)
             return Response({
                 'status': 'success',
                 'message': 'Self transfer created successfully',
@@ -464,7 +472,7 @@ class SelfTransferDetails(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return SelfTransfer.objects.all()
+        return SelfTransfer.objects.filter(user=self.request.user)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -507,11 +515,13 @@ class SelfTransferDetails(generics.RetrieveUpdateDestroyAPIView):
 ################################################## TASK LIST & CREATE ##################################################
 
 class TaskList(generics.ListCreateAPIView):
-    queryset = Task.objects.all()
     serializer_class = TaskSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = TaskFilter
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Task.objects.filter(user=self.request.user)
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -548,7 +558,7 @@ class TaskDetails(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Task.objects.all()
+        return Task.objects.filter(user=self.request.user)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -615,11 +625,13 @@ class TaskOrderUpdate(generics.UpdateAPIView):
 ################################################## TODO LIST & CREATE ##################################################
 
 class TodoList(generics.ListCreateAPIView):
-    queryset = Todo.objects.all()
     serializer_class = TodoSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = TodoFilter
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Todo.objects.filter(user=self.request.user)
 
     def list(self, request, *args, **kwargs):
         todos = self.filter_queryset(self.get_queryset())
@@ -643,7 +655,7 @@ class TodoList(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user=request.user)
             return Response({
                 'status': 'success',
                 'message': 'Todo created successfully',
@@ -663,7 +675,7 @@ class TodoDetails(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Todo.objects.all()
+        return Todo.objects.filter(user=self.request.user)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -706,11 +718,13 @@ class TodoDetails(generics.RetrieveUpdateDestroyAPIView):
 ################################################## CHECKLIST ##################################################
 
 class CheckList(generics.ListCreateAPIView):
-    queryset = ChecklistItem.objects.all()
     serializer_class = ChecklistItemSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = ChecklistItemFilter
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ChecklistItem.objects.filter(user=self.request.user)
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -760,7 +774,7 @@ class CheckListDetails(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return ChecklistItem.objects.all()
+        return ChecklistItem.objects.filter(user=self.request.user)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -808,7 +822,7 @@ class PreviousDays(APIView):
         data = []
 
         for date in dates:
-            tasks = ChecklistItem.objects.filter(date=date)
+            tasks = ChecklistItem.objects.filter(user=request.user,date=date)
             completed = tasks.filter(completed=False).count() == 0
 
             data.append({'date': date, 'completed': completed})
@@ -831,11 +845,13 @@ class PreviousDayTasks(generics.ListAPIView):
 ################################################## JOURNAL LIST & CREATE ##################################################
 
 class JournalList(generics.ListCreateAPIView):
-    queryset = Journal.objects.all()
     serializer_class = JournalSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = JournalFilter
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Journal.objects.filter(user=self.request.user)
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -851,7 +867,7 @@ class JournalList(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user=request.user)
             return Response({
                 'status': 'success',
                 'message': 'Journal created successfully',
@@ -871,7 +887,7 @@ class JournalDetails(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Journal.objects.all()
+        return Journal.objects.filter(user=self.request.user)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()

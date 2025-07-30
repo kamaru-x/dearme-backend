@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
 
@@ -26,6 +27,7 @@ ACCOUNT_TYPE = (
 )
 
 class Account(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField(auto_now_add=True)
     type = models.CharField(max_length=50, choices=ACCOUNT_TYPE)
     name = models.CharField(max_length=100)
@@ -36,6 +38,7 @@ class Account(models.Model):
         return self.name
 
 class Category(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField(auto_now_add=True)
     type = models.CharField(max_length=25, choices=TYPES)
     name = models.CharField(max_length=100)
@@ -50,6 +53,7 @@ class Category(models.Model):
         return self.name
 
 class Transaction(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField()
     title = models.CharField(max_length=100)
     type = models.CharField(max_length=25, choices=TYPES)
@@ -68,6 +72,7 @@ class Transaction(models.Model):
 
 
 class SelfTransfer(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField(auto_now_add=True)
     from_account = models.ForeignKey(Account, related_name='from_account', on_delete=models.CASCADE)
     to_account = models.ForeignKey(Account, related_name='to_account', on_delete=models.CASCADE)
@@ -84,6 +89,7 @@ class SelfTransfer(models.Model):
 
 
 class Todo(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField(auto_now_add=True)
     title = models.CharField(max_length=100,null=True)
     priority = models.CharField(max_length=10, choices=PRIORITY, default='normal')
@@ -99,6 +105,7 @@ class Todo(models.Model):
         return self.title
 
 class Task(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField(auto_now_add=True)
     title = models.CharField(max_length=100)
     order = models.IntegerField(default=0)
@@ -113,6 +120,7 @@ class Task(models.Model):
         return self.title
 
 class ChecklistItem(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
     date = models.DateField()
     completed = models.BooleanField(default=False)
@@ -127,6 +135,7 @@ class ChecklistItem(models.Model):
         return f"{self.task.title} - {self.date}"
 
 class Journal(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField()
     title = models.CharField(max_length=100)
     mood = models.CharField(max_length=50,choices=MOOD)
